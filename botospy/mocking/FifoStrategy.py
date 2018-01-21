@@ -5,6 +5,9 @@
 """
 """
 
+# Our Libraries
+from ..MethodCall import MethodCall
+
 
 class FifoStrategy( object ):
     """
@@ -21,11 +24,13 @@ class FifoStrategy( object ):
         
         self._targets = []
 
-    def register( self, method_call ):
+    def register( self, target, **kwargs ):
         """
         """
 
+        method_call = MethodCall( **kwargs )
         meta = [self._reuse, method_call]
+
         self._targets.append( meta )
 
     def is_mocked( self, target, **kwargs ):

@@ -21,6 +21,7 @@ import boto3
 
 # Our Classes
 from mocking.FifoStrategy import FifoStrategy
+from mocking.NoopStrategy import NoopStrategy
 from MethodCall import MethodCall
 
 
@@ -34,7 +35,7 @@ class BotoSpy( object ):
 
     #--- Magic Methods ---
 
-    def __init__( self, targets = None ):
+    def __init__( self, targets = None, strategy = None ):
         """
         Constructor for the BotoSpy class
         """
@@ -47,7 +48,10 @@ class BotoSpy( object ):
         self._calls   = []
         self._orig    = None
         self._patch   = None
-        self._matcher = None
+        self._matcher = NoopStrategy()
+        
+        if strategy:
+            self._matcher = strategy
 
     def __enter__( self ):
         """
@@ -55,7 +59,7 @@ class BotoSpy( object ):
 
         return self.activate()
 
-    def __exit__( self ):
+    def __exit__( self, type, value, traceback ):
         """
         """
 
@@ -68,18 +72,15 @@ class BotoSpy( object ):
         """"""
         self.watch( target )
 
-        service_name, method_name = target.rsplit(".", 1)
+        new_target = target
+        if not isinstance( target, list ):
+            new_target = [target]
 
-        if service_name in self._mock_data:
-            mocks = self._mock_data[ service_name ]
+        for item in new_target:
 
-            if method_name not in mocks:
-                mocks[ method_name ] = []
-
-            mocks[ method_name ].append( kwargs )
-            return self
-
-        self._mock_data[ service_name ] = { method_name: [kwargs] }
+            service_name, method_name = item.rsplit(".", 1)
+            
+            self._matcher.register( item, **kwargs )
 
         return self
 
@@ -109,12 +110,9 @@ class BotoSpy( object ):
         def wrapper( client, operation_name, kwargs ):
             _orig = self._orig
 
-            this_target = "{0}.{1}".format( client, operation_name )
+            this_target = "{0}.{1}".format( client.meta.service_model.service_name, operation_name )
             if this_target not in self.targets:
                 return _orig( client, operation_name, kwargs )
-
-            if not self._matcher:
-                self._matcher = FifoStrategy()
 
             method_call         = MethodCall()
             method_call.service = this_target
@@ -123,15 +121,13 @@ class BotoSpy( object ):
             service_name, method_name = this_target.rsplit(".", 1)
 
             try:
-                if client in self._mock_data:
-                    if operation_name in self._mock_data[ client ]:
-                        if self._mock_data[ client ][ operation_name ]:
-                            call_data = self._mock_data[ client ][ operation_name ]
-                                self._mock_data[ client ][ operation_name ] = self._mock_data[ client ][ operation_name ][1:]
-                            
-                           
+                match = self._matcher.match( this_target, **kwargs )
+                
+                if match is not None:
+                    method_call = match
+                else:
+                    method_call.result = _orig( client, operation_name, kwargs )
 
-                method_call.result = _orig( client, operation_name, kwargs )
             except Exception as e:
                 method_call.exception = e
 

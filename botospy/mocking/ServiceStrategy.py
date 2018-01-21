@@ -21,7 +21,7 @@ class FifoStrategy( object ):
         
         self._targets = []
 
-    def register( self, method_call ):
+    def register( self, target, method_call ):
         """
         """
 
