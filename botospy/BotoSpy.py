@@ -42,19 +42,19 @@ class BotoSpy( ContextDecorator ):
         """
         Constructor for the BotoSpy class
         """
-        self.targets = targets or []
+        self.targets  = targets or []
+        self.trace    = trace
+        
+        self._calls   = []
+        self._orig    = None
+        self._patch   = None
+        self._env     = None
+        self._matcher = NoopStrategy()
         
         if targets:
             if not isinstance( targets, list ):
                 self.targets = [targets]
 
-        self._calls   = []
-        self._orig    = None
-        self._patch   = None
-        self._env     = None
-        self._trace   = trace
-        self._matcher = NoopStrategy()
-        
         if strategy:
             self._matcher = strategy
 
@@ -139,7 +139,7 @@ class BotoSpy( ContextDecorator ):
 
             self._calls.append( method_call )
 
-            if self._trace:
+            if self.trace:
                 pprint.pprint( method_call )
 
             if method_call.exception:
@@ -173,6 +173,36 @@ class BotoSpy( ContextDecorator ):
 
         return self
 
+    @property
+    def calls(self):
+        """
+        """
+        return self.get_calls()
+
+    def get_calls( self, target = None ):
+        """
+        """
+        if not target:
+            return self._calls
+
+        new_target = target
+        if not isinstance( target, list ):
+            new_target = [target]
+
+        found = []
+        for item in new_target:
+
+            service_name, method_name = item.rsplit(".", 1)
+
+            if method_name:
+                temp = [method_call for method_call in self._calls if method_call.service == item]
+                found.extend( temp )
+                continue
+
+            temp = [method_call for method_call in self._calls if method_call.service.rsplit(".", 1)[0] == service_name]
+            found.extend( temp )
+
+        return found
 
 def main():
     """
