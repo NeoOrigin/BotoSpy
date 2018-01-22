@@ -8,13 +8,14 @@ Intended to be used programatically and via a cli
 """
 
 
-__version__ = "0.0.1"
+__version__ = "0.0.3"
 
 
 #--- Imports ---
 
 # Python Classes
 from contextlib import ContextDecorator
+import copy
 import os
 from unittest.mock import patch
 
@@ -34,7 +35,6 @@ class BotoSpy( ContextDecorator ):
     Serves as the controller for all botospy functionality
     """
 
-
     #--- Magic Methods ---
 
     def __init__( self, targets = None, strategy = None ):
@@ -50,7 +50,7 @@ class BotoSpy( ContextDecorator ):
         self._calls   = []
         self._orig    = None
         self._patch   = None
-        self._env     = os.environ
+        self._env     = None
         self._matcher = NoopStrategy()
         
         if strategy:
@@ -108,6 +108,7 @@ class BotoSpy( ContextDecorator ):
         if self._patch:
             return self
 
+        # reset calls
         self._calls = []
 
         def wrapper( client, operation_name, kwargs ):
@@ -141,7 +142,7 @@ class BotoSpy( ContextDecorator ):
 
             return method_call.result
 
-        self._env  = os.environ
+        self._env  = copy.deepcopy( os.environ )
         self._orig = botocore.client.BaseClient._make_api_call
         self._patch = patch( 'botocore.client.BaseClient._make_api_call', autospec = True )
         self._patch.start().side_effect = wrapper
