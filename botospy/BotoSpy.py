@@ -117,14 +117,14 @@ class BotoSpy( ContextDecorator ):
             _orig = self._orig
 
             this_target = "{0}.{1}".format( client.meta.service_model.service_name, operation_name )
-            if this_target not in self.targets:
+            if this_target not in self.targets and client.meta.service_model.service_name not in self.targets:
                 return _orig( client, operation_name, kwargs )
 
             method_call         = MethodCall()
             method_call.service = this_target
             method_call.kwargs  = kwargs
 
-            service_name, method_name = this_target.rsplit(".", 1)
+            #service_name, method_name = this_target.rsplit(".", 1)
 
             try:
                 match = self._matcher.match( this_target, **kwargs )
@@ -184,10 +184,13 @@ def main():
 
     import aws
 
-    with BotoSpy( targets ) as bs:
-        aws.clidriver.main()
+    rc = 1
+    del sys.argv[1]
+    
+    with BotoSpy( targets, trace = True ) as bs:
+        rc = awscli.clidriver.main()
 
-    sys.exit( 1 )
+    sys.exit( rc )
 
 
 #--- Main ---
