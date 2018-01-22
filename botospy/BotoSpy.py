@@ -14,6 +14,8 @@ __version__ = "0.0.1"
 #--- Imports ---
 
 # Python Classes
+from contextlib import ContextDecorator
+import os
 from unittest.mock import patch
 
 # 3rd Party Libraries
@@ -27,7 +29,7 @@ from MethodCall import MethodCall
 
 #--- Classes ---
 
-class BotoSpy( object ):
+class BotoSpy( ContextDecorator ):
     """
     Serves as the controller for all botospy functionality
     """
@@ -48,6 +50,7 @@ class BotoSpy( object ):
         self._calls   = []
         self._orig    = None
         self._patch   = None
+        self._env     = os.environ
         self._matcher = NoopStrategy()
         
         if strategy:
@@ -78,7 +81,7 @@ class BotoSpy( object ):
 
         for item in new_target:
 
-            service_name, method_name = item.rsplit(".", 1)
+            #service_name, method_name = item.rsplit(".", 1)
             
             self._matcher.register( item, **kwargs )
 
@@ -138,6 +141,7 @@ class BotoSpy( object ):
 
             return method_call.result
 
+        self._env  = os.environ
         self._orig = botocore.client.BaseClient._make_api_call
         self._patch = patch( 'botocore.client.BaseClient._make_api_call', autospec = True )
         self._patch.start().side_effect = wrapper
@@ -151,7 +155,15 @@ class BotoSpy( object ):
         if self._patch:
             self._patch.stop()
             self._patch = None
+
+        if self._orig:
             botocore.client.BaseClient._make_api_call = self._orig
+            self._orig = None
+
+        if self._env:
+            os.environ.clear()
+            os.environ.update(self._env)
+            self._env = None
 
         return self
 
