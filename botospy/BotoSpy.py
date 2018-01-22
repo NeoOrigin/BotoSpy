@@ -17,6 +17,7 @@ __version__ = "0.0.3"
 from contextlib import ContextDecorator
 import copy
 import os
+import pprint
 from unittest.mock import patch
 
 # 3rd Party Libraries
@@ -37,7 +38,7 @@ class BotoSpy( ContextDecorator ):
 
     #--- Magic Methods ---
 
-    def __init__( self, targets = None, strategy = None ):
+    def __init__( self, targets = None, strategy = None, trace = False ):
         """
         Constructor for the BotoSpy class
         """
@@ -51,6 +52,7 @@ class BotoSpy( ContextDecorator ):
         self._orig    = None
         self._patch   = None
         self._env     = None
+        self._trace   = trace
         self._matcher = NoopStrategy()
         
         if strategy:
@@ -137,6 +139,9 @@ class BotoSpy( ContextDecorator ):
 
             self._calls.append( method_call )
 
+            if self._trace:
+                pprint.pprint( method_call )
+
             if method_call.exception:
                 raise method_call.exception
 
@@ -177,8 +182,10 @@ def main():
     target  = sys.argv[1]
     targets = target.split( "," )
 
-    spy = BotoSpy( targets )
-    spy.activate()
+    import aws
+
+    with BotoSpy( targets ) as bs:
+        aws.clidriver.main()
 
     sys.exit( 1 )
 

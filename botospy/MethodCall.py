@@ -8,6 +8,10 @@ Intended to be used programatically and via a cli
 """
 
 
+# Python Libraries
+import pprint
+
+
 class MethodCall( object ):
     """
     """
@@ -31,7 +35,7 @@ class MethodCall( object ):
         """
         """
 
-        return str( self.__dict__ )
+        return pprint.pformat( self.__dict__ )
 
 
 if __name__ == '__main__':
