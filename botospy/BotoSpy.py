@@ -212,12 +212,71 @@ def main():
     target  = sys.argv[1]
     targets = target.split( "," )
 
-    import aws
+    import awscli
 
     rc = 1
     del sys.argv[1]
     
-    with BotoSpy( targets, trace = True ) as bs:
+    trace   = False
+    mocks   = []
+    methods = []
+
+    last_index = -1
+    skip = 0
+    for i, arg in enumerate( sys.argv ):
+
+        if skip > 0:
+            skip -= 1
+            continue
+
+        if arg == "::":
+            last_index = i
+            break
+
+        if arg == "--trace" and len( sys.argv ) > i+1:
+            trace = bool( sys.argv[i+1] )
+            skip  = 1
+            continue
+
+        if arg == "--mock" and len( sys.argv ) > i+1:
+            mocks.append( sys.argv[i+1] )
+            skip = 1
+            method_info = { "mocked": True, "service": sys.argv[i+1] }
+
+            if len( sys.argv ) > i+2:
+                for j, arg2 in enumerate( sys.argv[i+2:] ):
+                    if sys.argv[i+2+j] == "--args":
+                        skip += 1
+                        if len( sys.argv ) > i+j+3:
+                            skip += 1
+                            method_info[ "kwargs" ] = sys.argv[i+j+3]
+                        continue
+                    if sys.argv[i+2+j] == "--result":
+                        skip += 1
+                        if len( sys.argv ) > i+j+3:
+                            skip += 1
+                            method_info["result"] = sys.argv[i+j+3]
+                        continue
+                    if sys.argv[i+2+j] == "--raise":
+                        skip += 1
+                        if len( sys.argv ) > i+j+3:
+                            skip += 1
+                            method_info["exception"] = sys.argv[i+j+3]
+                        continue
+            methods.append( method_info )
+            continue
+
+    if last_index >=0:
+        sys.argv = sys.argv[last_index+1:]
+    
+    with BotoSpy( targets, trace = trace ) as bs:
+
+        for i, mock_data in enumerate( mocks ):
+            if methods[i]:
+                bs.mock( mock_data, **methods[i] )
+                continue
+             bs.watch( mock_data )
+
         rc = awscli.clidriver.main()
 
     sys.exit( rc )
