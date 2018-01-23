@@ -223,6 +223,8 @@ def main():
 
     last_index = -1
     skip = 0
+    num_args = len( sys.argv )
+
     for i, arg in enumerate( sys.argv ):
 
         if skip > 0:
@@ -233,36 +235,38 @@ def main():
             last_index = i
             break
 
-        if arg == "--trace" and len( sys.argv ) > i+1:
+        if arg == "--trace" and num_args > i+1:
             trace = bool( sys.argv[i+1] )
             skip  = 1
             continue
 
-        if arg == "--mock" and len( sys.argv ) > i+1:
+        if arg == "--mock" and num_args > i+1:
             mocks.append( sys.argv[i+1] )
             skip = 1
             method_info = { "mocked": True, "service": sys.argv[i+1] }
 
-            if len( sys.argv ) > i+2:
-                for j, arg2 in enumerate( sys.argv[i+2:] ):
-                    if sys.argv[i+2+j] == "--args":
+            for j, name in enumerate( sys.argv[i+2:] ):
+
+                if name == "--args":
+                    skip += 1
+                    if num_args > i+j+3:
                         skip += 1
-                        if len( sys.argv ) > i+j+3:
-                            skip += 1
-                            method_info[ "kwargs" ] = sys.argv[i+j+3]
-                        continue
-                    if sys.argv[i+2+j] == "--result":
+                        method_info[ "kwargs" ] = sys.argv[i+j+3]
+                    continue
+                if name == "--result":
+                    skip += 1
+                    if num_args > i+j+3:
                         skip += 1
-                        if len( sys.argv ) > i+j+3:
-                            skip += 1
-                            method_info["result"] = sys.argv[i+j+3]
-                        continue
-                    if sys.argv[i+2+j] == "--raise":
+                        method_info["result"] = sys.argv[i+j+3]
+                    continue
+                if name == "--raise":
+                    skip += 1
+                    if num_args > i+j+3:
                         skip += 1
-                        if len( sys.argv ) > i+j+3:
-                            skip += 1
-                            method_info["exception"] = sys.argv[i+j+3]
-                        continue
+                        method_info["exception"] = sys.argv[i+j+3]
+                    continue
+                break
+
             methods.append( method_info )
             continue
 
