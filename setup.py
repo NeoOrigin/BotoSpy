@@ -26,8 +26,8 @@ with open("README.md", "rb") as f:
 
 
 setup(
-    name = "etlx",
-    packages = ["etlx"],
+    name = "BotoSpy",
+    packages = ["botospy"],
     entry_points = {
         "console_scripts": ['botospy = botospy.BotoSpy:main']
         },
