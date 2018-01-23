@@ -6,7 +6,7 @@
 """
 
 
-class FifoStrategy( object ):
+class ServiceStrategy( object ):
     """
     """
 
@@ -19,45 +19,37 @@ class FifoStrategy( object ):
         self._strict = strict
         self._reuse  = reuse
         
-        self._targets = []
+        self._targets = {}
 
-    def register( self, target, method_call ):
+    def register( self, target, **kwargs ):
         """
         """
 
-        meta = [self._reuse, method_call]
-        self._targets.append( meta )
+        if self._reuse >= 0:
+            method_call = MethodCall( **kwargs )
+            meta        = [self._reuse, method_call]
+            service     = kwargs["service"]
+
+            if service not in self._targets:
+                self._targets[ service ] = [meta]
+                return
+
+            self._targets[ service ].append( meta )
 
     def is_mocked( self, target, **kwargs ):
         """
         """
 
-        if not self._targets:
+        if not self._targets or not target:
             return False
 
-        # order is important and a full check
-        if self._strict == 0:
-
-            _, method_call = self._targets[0]:
-            if target == method_call.service:
-                return True
-
-            return False
-
-        # order not important until find first service
-        if self._strict == 1:
-            for _, method_call in self._targets:
-                if target == method_call.service:
-                    return True
-            return False
-
-        for _, method_call in self._targets:
-            if target == method_call.service:
-                if kwargs == method_call.kwargs:
-                    return True
-                break
-
-            return False
+        if target in self._targets:
+            return True
+        
+        service_name, method_name = target.rsplit(".", 1)
+        
+        if service_name in self._targets:
+            return True
 
         return False
 
@@ -65,24 +57,29 @@ class FifoStrategy( object ):
         """
         """
 
-        if self._strict:
-            for i, meta in enumerate( self._targets ):
-                method_call = meta[1]
-                if target == method_call.service:
-                    if kwargs == method_call.kwargs:
-                        meta[0] -= 1
-                        if meta[0] < 0:
-                            del self._targets[i]
-                        return method_call
-                    break
+        if not self._targets or not target:
             return None
 
-        for i, meta in enumerate( self._targets ):
+        for service, meta in self._targets:
             method_call = meta[1]
             if target == method_call.service:
                 meta[0] -= 1
                 if meta[0] < 0:
-                    del self._targets[i]
+                    self._targets[service] = self._targets[service][1:]
+                    if not self._targets[service]:
+                        del self._targets[service]
+                return method_call
+
+        service_name, method_name = target.rsplit(".", 1)
+
+        for service, meta in self._targets:
+            method_call = meta[1]
+            if service_name == method_call.service:
+                meta[0] -= 1
+                if meta[0] < 0:
+                    self._targets[service] = self._targets[service][1:]
+                    if not self._targets[service]:
+                        del self._targets[service]
                 return method_call
 
         return None

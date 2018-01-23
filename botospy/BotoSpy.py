@@ -26,6 +26,7 @@ import boto3
 # Our Classes
 from mocking.FifoStrategy import FifoStrategy
 from mocking.NoopStrategy import NoopStrategy
+from mocking.ServiceStrategy import ServiceStrategy
 from MethodCall import MethodCall
 
 
@@ -49,7 +50,7 @@ class BotoSpy( ContextDecorator ):
         self._orig    = None
         self._patch   = None
         self._env     = None
-        self._matcher = NoopStrategy()
+        self._matcher = ServiceStrategy()
         
         if targets:
             if not isinstance( targets, list ):
@@ -280,7 +281,7 @@ def main():
     if last_index >=0:
         sys.argv = sys.argv[last_index+1:]
     
-    strategy = FifoStrategy()
+    strategy = ServiceStrategy()
 
     # Setup our mocker and run
     with BotoSpy( targets, strategy = strategy, trace = trace ) as bs:

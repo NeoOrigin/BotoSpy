@@ -29,10 +29,11 @@ class FifoStrategy( object ):
         """
         """
 
-        method_call = MethodCall( **kwargs )
-        meta = [self._reuse, method_call]
+        if self._reuse >= 0:
+            method_call = MethodCall( **kwargs )
+            meta = [self._reuse, method_call]
 
-        self._targets.append( meta )
+            self._targets.append( meta )
 
     def is_mocked( self, target, **kwargs ):
         """
