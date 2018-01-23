@@ -3,15 +3,23 @@
 
 
 """
+When deciding a mocking result this strategy performs a first in first out call to result order
 """
 
 
+#--- Imports ---
+
 # Our Libraries
 from ..MethodCall import MethodCall
+from NoopStrategy import NoopStrategy
 
 
-class FifoStrategy( object ):
+#--- Classes ---
+
+class FifoStrategy( NoopStrategy ):
     """
+    A first in first out strategy for deciding mock
+    boto3 api results. 
     """
 
     def __init__( self,
@@ -25,26 +33,38 @@ class FifoStrategy( object ):
         
         self._targets = []
 
-    def register( self, target, **kwargs ):
+    def register( self, target, method_call ):
         """
         """
 
-        if self._reuse >= 0:
-            method_call = MethodCall( **kwargs )
-            meta = [self._reuse, method_call]
+        if target and self._reuse >= 0:
+
+            meta = [self._reuse, target, method_call]
 
             self._targets.append( meta )
 
-    def is_mocked( self, target, **kwargs ):
+    def unregister( self, target, method_call ):
         """
         """
+
+        if target:
+            for i, meta in enumerate( self._targets ):
+                if meta[1] == target:
+                    del self._targets[i]
+                    return meta[2]
+
+    def is_mocked( self, **kwargs ):
+        """
+        """
+
+        target = kwargs["target"] if "target" in kwargs else kwargs["service"]
 
         if not target or not self._targets:
             return False
 
-        _, method_call = self._targets[0]
+        _, target_found, method_call = self._targets[0]
 
-        if target == method_call.service:
+        if target == target_found:
         
             if not self._strict:
                 return True
@@ -54,18 +74,21 @@ class FifoStrategy( object ):
 
         return False
 
-    def match( self, target, **kwargs ):
+    def match( self, **kwargs ):
         """
         """
+
+        target = kwargs["target"] if "target" in kwargs else kwargs["service"]
 
         if not target or not self._targets:
             return None
 
-        meta        = self._targets[0]
-        method_call = meta[1]
-        result      = None
+        meta         = self._targets[0]
+        target_found = meta[1]
+        method_call  = meta[2]
+        result       = None
 
-        if target == method_call.service:
+        if target == target_found:
 
             if not self._strict:
                 result = method_call

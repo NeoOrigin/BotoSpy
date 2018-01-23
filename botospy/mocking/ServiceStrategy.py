@@ -6,8 +6,20 @@
 """
 
 
-class ServiceStrategy( object ):
+#--- Imports ---
+
+# Our Libraries
+from NoopStrategy import NoopStrategy
+
+
+#--- Classes --
+
+class ServiceStrategy( NoopStrategy ):
     """
+    Mocks are looked up by service name and method, if 
+    no equivakent method found then just service will 
+    be looked up.  If multiple found then this will 
+    follow a first in first out order
     """
 
     def __init__( self,
@@ -21,68 +33,104 @@ class ServiceStrategy( object ):
         
         self._targets = {}
 
-    def register( self, target, **kwargs ):
+    def register( self, target, method_call ):
+        """
+        Registers a mock with this strategy.
+        """
+
+        # No point continuing if the targets wont
+        # survive even one call
+        if target and self._reuse >= 0:
+
+            meta = [self._reuse, target, method_call]
+
+            # Append, each service gets a placeholder
+            if target not in self._targets:
+                self._targets[ target ] = []
+
+            self._targets[ target ].append( meta )
+
+    def unregister( self, target, method_call ):
         """
         """
 
-        if self._reuse >= 0:
-            method_call = MethodCall( **kwargs )
-            meta        = [self._reuse, method_call]
-            service     = kwargs["service"]
+        if target:
+            for name, meta in self._targets.items():
+                if name == target:
+                    del self._targets[name]
+                    return meta[2]
 
-            if service not in self._targets:
-                self._targets[ service ] = [meta]
-                return
-
-            self._targets[ service ].append( meta )
-
-    def is_mocked( self, target, **kwargs ):
+    def is_mocked( self, **kwargs ):
         """
         """
+
+        target = kwargs["target"] if "target" in kwargs else kwargs["service"]
 
         if not self._targets or not target:
             return False
 
+        if self._strict:
+            for service_name, meta in self._target.items():
+                if target == service_name and meta[2].kwargs = kwargs:
+                    return True
+
+            for service_name, meta in self._target.items():
+                if target == service_name.rsplit(".", 1)[0] and meta[2].kwargs = kwargs:
+                    return True
+
+            return False
+
+        # Not strict
+
         if target in self._targets:
             return True
         
-        service_name, method_name = target.rsplit(".", 1)
+        service_name = target.rsplit(".", 1)[0]
         
         if service_name in self._targets:
             return True
 
         return False
 
-    def match( self, target, **kwargs ):
+    def match( self, **kwargs ):
         """
         """
+
+        target = kwargs["target"] if "target" in kwargs else kwargs["service"]
 
         if not self._targets or not target:
             return None
 
-        for service, meta in self._targets:
-            method_call = meta[1]
-            if target == method_call.service:
-                meta[0] -= 1
-                if meta[0] < 0:
-                    self._targets[service] = self._targets[service][1:]
-                    if not self._targets[service]:
-                        del self._targets[service]
-                return method_call
+        for service_name, meta in self._targets.items():
 
-        service_name, method_name = target.rsplit(".", 1)
+            method_call = meta[2]
+            if target != method_call.service:
+                continue
 
-        for service, meta in self._targets:
-            method_call = meta[1]
-            if service_name == method_call.service:
-                meta[0] -= 1
-                if meta[0] < 0:
-                    self._targets[service] = self._targets[service][1:]
-                    if not self._targets[service]:
-                        del self._targets[service]
-                return method_call
+            meta[0] -= 1
+            if meta[0] < 0:
+                self._targets[service_name] = self._targets[service_name][1:]
+                if not self._targets[service_name]:
+                    del self._targets[service_name]
+            return method_call
+
+        service_name = target.rsplit(".", 1)[0]
+
+        for service, meta in self._targets.items():
+
+            method_call = meta[2]
+            if service_name != method_call.service:
+                continue
+
+            meta[0] -= 1
+            if meta[0] < 0:
+                self._targets[service] = self._targets[service][1:]
+                if not self._targets[service]:
+                    del self._targets[service]
+            return method_call
 
         return None
+
 
 if __name__ == '__main__':
     pass

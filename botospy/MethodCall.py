@@ -3,17 +3,21 @@
 
 
 """
-The main entrypoint for the BotoSpy framework. 
-Intended to be used programatically and via a cli
+Represents the inputs and outputs of a boto3 method call.
 """
 
+
+#--- Imports ---
 
 # Python Libraries
 import pprint
 
 
+#--- Classes ---
+
 class MethodCall( object ):
     """
+    Represents the inputs and outputs of a boto3 method call
     """
 
     def __init__( self,

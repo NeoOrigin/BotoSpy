@@ -17,7 +17,6 @@ __version__ = "0.0.3"
 from contextlib import ContextDecorator
 import copy
 import os
-import pprint
 from unittest.mock import patch
 
 # 3rd Party Libraries
@@ -76,28 +75,59 @@ class BotoSpy( ContextDecorator ):
 
     def mock( self, target, **kwargs ):
         """"""
-        self.watch( target )
+        if target:
+            self.watch( target )
 
-        new_target = target
-        if not isinstance( target, list ):
-            new_target = [target]
+            new_target = target
+            if not isinstance( target, list ):
+                new_target = [target]
 
-        for item in new_target:
-
-            #service_name, method_name = item.rsplit(".", 1)
-            
-            self._matcher.register( item, **kwargs )
+            for item in new_target:
+                self._matcher.register( item, MethodCall( **kwargs ) )
 
         return self
 
     def watch( self, target ):
         """"""
 
-        new_target = target
-        if not isinstance( target, list ):
-            new_target = [target]
+        if target:
+            new_target = target
+            if not isinstance( target, list ):
+                new_target = [target]
 
-        self.targets.extend( new_target )
+            self.targets.extend( new_target )
+
+        return self
+
+    def unmock( self, target, **kwargs ):
+        """"""
+
+        if target:
+
+            new_target = target
+            if not isinstance( target, list ):
+                new_target = [target]
+
+            for item in new_target:
+                self._matcher.unregister( item, MethodCall( **kwargs ) )
+
+            self.unwatch( target )
+
+        return self
+
+    def unwatch( self, target ):
+        """"""
+
+        if target:
+            new_target = target
+            if not isinstance( target, list ):
+                new_target = [target]
+
+            for temp in new_target:
+                for i, name in enumerate( self.targets ):
+                    if name == temp:
+                        del self.targets[i]
+                        break
 
         return self
 
@@ -117,31 +147,35 @@ class BotoSpy( ContextDecorator ):
         def wrapper( client, operation_name, kwargs ):
             _orig = self._orig
 
-            this_target = "{0}.{1}".format( client.meta.service_model.service_name, operation_name )
-            if this_target not in self.targets and client.meta.service_model.service_name not in self.targets:
+            service_name = client.meta.service_model.service_name
+            this_target = "{0}.{1}".format( service_name, operation_name )
+            if this_target not in self.targets and service_name not in self.targets:
                 return _orig( client, operation_name, kwargs )
 
-            method_call         = MethodCall()
-            method_call.service = this_target
-            method_call.kwargs  = kwargs
+            method_call = MethodCall()
+            method_call.mocked = False
 
             #service_name, method_name = this_target.rsplit(".", 1)
 
             try:
                 match = self._matcher.match( this_target, **kwargs )
-                
+
                 if match is not None:
                     method_call = match
+                    method_call.mocked = True
                 else:
                     method_call.result = _orig( client, operation_name, kwargs )
 
             except Exception as e:
                 method_call.exception = e
 
+            method_call.service = this_target
+            method_call.kwargs  = kwargs
+
             self._calls.append( method_call )
 
             if self.trace:
-                pprint.pprint( method_call )
+                print( str( method_call ) )
 
             if method_call.exception:
                 raise method_call.exception
