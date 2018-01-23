@@ -5,6 +5,7 @@
 """
 """
 
+
 # Our Libraries
 from ..MethodCall import MethodCall
 
@@ -37,7 +38,7 @@ class FifoStrategy( object ):
         """
         """
 
-        if not self._targets:
+        if not target or not self._targets:
             return False
 
         _, method_call = self._targets[0]
@@ -56,7 +57,7 @@ class FifoStrategy( object ):
         """
         """
 
-        if not self._targets:
+        if not target or not self._targets:
             return None
 
         meta        = self._targets[0]
@@ -76,6 +77,7 @@ class FifoStrategy( object ):
                     del self._targets[0]
 
         return result
+
 
 if __name__ == '__main__':
     pass

@@ -209,21 +209,17 @@ def main():
     Main entrypoint for the cli
     """
 
-    target  = sys.argv[1]
-    targets = target.split( "," )
-
     import awscli
 
-    rc = 1
-    del sys.argv[1]
-    
+    rc      = 1
     trace   = False
+    targets = []
     mocks   = []
     methods = []
 
     last_index = -1
-    skip = 0
-    num_args = len( sys.argv )
+    skip       = 1
+    num_args   = len( sys.argv )
 
     for i, arg in enumerate( sys.argv ):
 
@@ -235,13 +231,22 @@ def main():
             last_index = i
             break
 
+        if arg == "--watch" and num_args > i+1:
+            targets.extend( sys.argv[i+1].split(",") )
+            skip = 1
+            continue
+
+        if arg == "--strategy" and num_args > i+1:
+            strategy = sys.argv[i+1]
+            skip = 1
+            continue
+
         if arg == "--trace" and num_args > i+1:
             trace = bool( sys.argv[i+1] )
             skip  = 1
             continue
 
         if arg == "--mock" and num_args > i+1:
-            mocks.append( sys.argv[i+1] )
             skip = 1
             method_info = { "mocked": True, "service": sys.argv[i+1] }
 
@@ -267,19 +272,21 @@ def main():
                     continue
                 break
 
+            mocks.append( method_info["service"] )
             methods.append( method_info )
             continue
 
+    # truncate handled arguments as awscli reads them
     if last_index >=0:
         sys.argv = sys.argv[last_index+1:]
     
-    with BotoSpy( targets, trace = trace ) as bs:
+    strategy = FifoStrategy()
+
+    # Setup our mocker and run
+    with BotoSpy( targets, strategy = strategy, trace = trace ) as bs:
 
         for i, mock_data in enumerate( mocks ):
-            if methods[i]:
-                bs.mock( mock_data, **methods[i] )
-                continue
-             bs.watch( mock_data )
+             bs.mock( mock_data, **methods[i] )
 
         rc = awscli.clidriver.main()
 
